@@ -1,0 +1,22 @@
+# Telegram bot framework
+python-telegram-bot==21.6
+
+# Google Calendar
+google-api-python-client==2.139.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.1
+
+# Trello (pure requests — no extra lib needed)
+requests==2.32.3
+
+# Groq (free NLP)
+groq==0.11.0
+
+# Scheduling (reminders)
+APScheduler==3.10.4
+
+# Timezone
+pytz==2024.2
+
+# Env vars
+python-dotenv==1.0.1

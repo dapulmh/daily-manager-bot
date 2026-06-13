@@ -1,0 +1,17 @@
+[Unit]
+Description=Daily Manager Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/daily-manager-bot
+ExecStart=/home/ubuntu/daily-manager-bot/venv/bin/python bot.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+EnvironmentFile=/home/ubuntu/daily-manager-bot/.env
+
+[Install]
+WantedBy=multi-user.target
