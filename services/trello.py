@@ -3,6 +3,8 @@ services/trello.py
 Wraps the Trello REST API using API key + token (no OAuth needed).
 """
 
+from __future__ import annotations
+
 import requests
 from utils.config import CONFIG
 

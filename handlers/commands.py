@@ -9,7 +9,7 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 
 from utils.auth import private_only
-from utils.formatter import format_daily, format_events, format_cards, format_reminders
+from utils.formatter import format_daily, format_events, format_cards, format_reminders, escape
 import services.google_calendar as gcal
 import services.trello as trello
 import services.reminders as reminder_svc
@@ -42,7 +42,7 @@ async def today(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         msg    = format_daily(events, cards)
     except Exception as e:
         logger.error("today error: %s", e)
-        msg = f"❌ Error fetching data: {e}"
+        msg = f"❌ Error fetching data: {escape(str(e))}"
     await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 
@@ -54,7 +54,7 @@ async def week(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         msg    = format_events(events, "This week")
     except Exception as e:
         logger.error("week error: %s", e)
-        msg = f"❌ Error: {e}"
+        msg = f"❌ Error: {escape(str(e))}"
     await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 
