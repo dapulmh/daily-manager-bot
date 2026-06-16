@@ -29,10 +29,10 @@ Possible intents:
   unknown         — none of the above
 
 JSON schema:
-{
+{{
   "intent": "<one of the intents above>",
   "confidence": <0.0-1.0>,
-  "data": {
+  "data": {{
     // for add_event:
     "title": "<event title>",
     "start_iso": "<ISO 8601 datetime in user's timezone>",
@@ -48,8 +48,8 @@ JSON schema:
     // for set_reminder:
     "title": "<what to remind>",
     "remind_at_iso": "<ISO 8601 datetime>"
-  }
-}
+  }}
+}}
 If a field is not mentioned, set it to null. Always output valid JSON.
 """
 
