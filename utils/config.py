@@ -31,7 +31,7 @@ CONFIG = {
 
     # Groq (free NLP)
     "GROQ_API_KEY":     _require("GROQ_API_KEY"),
-    "GROQ_MODEL":       os.getenv("GROQ_MODEL", "llama3-8b-8192"),
+    "GROQ_MODEL":       os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
 
     # Timezone
     "TIMEZONE": os.getenv("TIMEZONE", "Asia/Jakarta"),
