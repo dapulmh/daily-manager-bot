@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytz
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from telegram import Bot
 
 from utils.config import CONFIG
@@ -53,44 +54,70 @@ def init_scheduler(bot: Bot) -> AsyncIOScheduler:
 
 
 def _schedule_job(rem: dict) -> None:
-    """Add a one-off job to the scheduler."""
     fire_dt = datetime.fromisoformat(rem["remind_at_iso"])
     if fire_dt.tzinfo is None:
         fire_dt = TZ.localize(fire_dt)
 
-    if fire_dt < datetime.now(TZ):
-        return  # already past
+    recurrence = rem.get("recurrence")
+    kwargs = {"reminder_id": rem["id"], "title": rem["title"], "recurrence": recurrence}
+
+    if recurrence == "daily":
+        trigger = CronTrigger(hour=fire_dt.hour, minute=fire_dt.minute, timezone=TZ)
+    elif recurrence == "weekly":
+        # day_of_week: 0=Monday … 6=Sunday, matches Python's weekday()
+        trigger = CronTrigger(
+            day_of_week=fire_dt.weekday(),
+            hour=fire_dt.hour,
+            minute=fire_dt.minute,
+            timezone=TZ,
+        )
+    else:
+        if fire_dt < datetime.now(TZ):
+            return  # already past, skip one-time reminders
+        trigger = "date"
+        _scheduler.add_job(
+            _fire_reminder,
+            trigger=trigger,
+            run_date=fire_dt,
+            kwargs=kwargs,
+            id=rem["id"],
+            replace_existing=True,
+            misfire_grace_time=120,
+        )
+        return
 
     _scheduler.add_job(
         _fire_reminder,
-        trigger="date",
-        run_date=fire_dt,
-        kwargs={"reminder_id": rem["id"], "title": rem["title"]},
+        trigger=trigger,
+        kwargs=kwargs,
         id=rem["id"],
         replace_existing=True,
         misfire_grace_time=120,
     )
 
 
-async def _fire_reminder(reminder_id: str, title: str) -> None:
+async def _fire_reminder(reminder_id: str, title: str, recurrence: str = None) -> None:
+    label = {"daily": " (daily)", "weekly": " (weekly)"}.get(recurrence, "")
     await _bot.send_message(
         chat_id=CONFIG["ALLOWED_USER_ID"],
-        text=f"⏰ *Reminder:* {title}",
+        text=f"⏰ *Reminder{label}:* {title}",
         parse_mode="Markdown",
     )
-    # Remove from store
-    reminders = [r for r in _load() if r["id"] != reminder_id]
-    _save(reminders)
+    # Only remove one-time reminders; recurring ones stay in the store
+    if not recurrence:
+        reminders = [r for r in _load() if r["id"] != reminder_id]
+        _save(reminders)
 
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
-def add_reminder(title: str, remind_at_iso: str) -> dict:
-    """Add and persist a reminder. Returns the stored reminder dict."""
+def add_reminder(title: str, remind_at_iso: str, recurrence: str = None) -> dict:
+    """Add and persist a reminder. recurrence: 'daily' | 'weekly' | None."""
     rem = {
-        "id":           str(uuid.uuid4()),
-        "title":        title,
+        "id":            str(uuid.uuid4()),
+        "title":         title,
         "remind_at_iso": remind_at_iso,
+        "recurrence":    recurrence,
     }
     reminders = _load()
     reminders.append(rem)

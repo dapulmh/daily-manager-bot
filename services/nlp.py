@@ -47,7 +47,8 @@ JSON schema:
 
     // for set_reminder:
     "title": "<what to remind>",
-    "remind_at_iso": "<ISO 8601 datetime>"
+    "remind_at_iso": "<ISO 8601 datetime of the first occurrence>",
+    "recurrence": "<daily|weekly|null>"
   }}
 }}
 If a field is not mentioned, set it to null. Always output valid JSON.

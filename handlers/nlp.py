@@ -104,15 +104,18 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             )
             return
         rem = reminder_svc.add_reminder(
-            title        = data.get("title", text),
-            remind_at_iso= data["remind_at_iso"],
+            title         = data.get("title", text),
+            remind_at_iso = data["remind_at_iso"],
+            recurrence    = data.get("recurrence"),
         )
         from utils.dt import fmt_dt
         from utils.formatter import escape
-        time_str = escape(fmt_dt(rem["remind_at_iso"]))
-        title    = escape(rem["title"])
+        time_str   = escape(fmt_dt(rem["remind_at_iso"]))
+        title      = escape(rem["title"])
+        recurrence = rem.get("recurrence")
+        rec_label  = escape(f" · repeats {recurrence}") if recurrence else ""
         await update.message.reply_text(
-            f"⏰ Reminder set: *{title}* at `{time_str}`",
+            f"⏰ Reminder set: *{title}* at `{time_str}`{rec_label}",
             parse_mode=ParseMode.MARKDOWN_V2,
         )
 

@@ -14,6 +14,7 @@ from handlers.commands import (
 from handlers.nlp import handle_message
 from handlers.callbacks import handle_callback
 from utils.config import CONFIG
+from services.reminders import init_scheduler
 
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -22,8 +23,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+async def _post_init(app):
+    init_scheduler(app.bot)
+    logger.info("Reminder scheduler initialised")
+
+
 def main():
-    app = ApplicationBuilder().token(CONFIG["TELEGRAM_TOKEN"]).build()
+    app = (
+        ApplicationBuilder()
+        .token(CONFIG["TELEGRAM_TOKEN"])
+        .post_init(_post_init)
+        .build()
+    )
 
     # Slash commands
     app.add_handler(CommandHandler("start",    start))

@@ -59,15 +59,19 @@ def format_cards(cards: list[dict], header: str) -> str:
 
 # ── Reminders ────────────────────────────────────────────────────────────────
 
+_RECURRENCE_LABEL = {"daily": " 🔁 daily", "weekly": " 🔁 weekly"}
+
+
 def format_reminders(reminders: list[dict]) -> str:
     if not reminders:
         return "*Reminders*\n\n_None set_ ✅"
 
     lines = ["*Reminders*\n"]
     for rem in reminders:
-        time_str = escape(fmt_dt(rem["remind_at_iso"]))
-        title    = escape(rem["title"])
-        lines.append(f"⏰ `{time_str}` — {title}")
+        time_str  = escape(fmt_dt(rem["remind_at_iso"]))
+        title     = escape(rem["title"])
+        rec_label = escape(_RECURRENCE_LABEL.get(rem.get("recurrence", ""), ""))
+        lines.append(f"⏰ `{time_str}` — {title}{rec_label}")
 
     return "\n".join(lines)
 
