@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.env
+token.json
+credentials.json
+reminders.json
+test_local.py
+*.service

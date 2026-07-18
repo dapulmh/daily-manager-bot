@@ -20,7 +20,9 @@ from utils.dt import TZ
 
 logger = logging.getLogger(__name__)
 
-STORE_FILE = Path("reminders.json")
+# Use /data volume on Fly.io if it exists, otherwise fall back to local
+_DATA_DIR = Path("/data") if Path("/data").exists() else Path(".")
+STORE_FILE = _DATA_DIR / "reminders.json"
 _scheduler: AsyncIOScheduler = None
 _bot: Bot = None
 

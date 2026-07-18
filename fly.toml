@@ -1,0 +1,20 @@
+app = "daily-manager-bot"
+primary_region = "sin"  # Singapore — closest to Jakarta
+
+[build]
+
+[env]
+  TIMEZONE = "Asia/Jakarta"
+  GROQ_MODEL = "llama-3.1-8b-instant"
+  GOOGLE_CALENDAR_ID = "primary"
+  GOOGLE_TOKEN_FILE = "/data/token.json"
+  GOOGLE_CREDENTIALS_FILE = "/data/credentials.json"
+
+[mounts]
+  source = "bot_data"
+  destination = "/data"
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
