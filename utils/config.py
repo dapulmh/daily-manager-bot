@@ -28,6 +28,7 @@ CONFIG = {
     "TRELLO_API_KEY":   _require("TRELLO_API_KEY"),
     "TRELLO_TOKEN":     _require("TRELLO_TOKEN"),
     "TRELLO_BOARD_ID":  _require("TRELLO_BOARD_ID"),
+    "TRELLO_DONE_LIST": os.getenv("TRELLO_DONE_LIST", "Done"),
 
     # Groq (free NLP)
     "GROQ_API_KEY":     _require("GROQ_API_KEY"),

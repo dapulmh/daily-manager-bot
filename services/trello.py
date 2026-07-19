@@ -80,20 +80,30 @@ def _ensure_label(priority: str) -> str:
 
 # ── Cards ────────────────────────────────────────────────────────────────────
 
-def get_cards(list_name: str = None) -> list[dict]:
-    """Return cards on the board, optionally filtered to a list name."""
+def get_cards(list_name: str = None, exclude_done: bool = True) -> list[dict]:
+    """Return cards on the board, optionally filtered to a list name.
+    When fetching all cards, excludes the Done list by default."""
     if list_name:
         lid = _list_id(list_name)
         if not lid:
             return []
         r = requests.get(f"{BASE}/lists/{lid}/cards", params=_auth())
-    else:
-        r = requests.get(
-            f"{BASE}/boards/{CONFIG['TRELLO_BOARD_ID']}/cards",
-            params=_auth(),
-        )
+        r.raise_for_status()
+        return r.json()
+
+    r = requests.get(
+        f"{BASE}/boards/{CONFIG['TRELLO_BOARD_ID']}/cards",
+        params=_auth(),
+    )
     r.raise_for_status()
-    return r.json()
+    cards = r.json()
+
+    if exclude_done:
+        done_lid = _list_id(CONFIG["TRELLO_DONE_LIST"])
+        if done_lid:
+            cards = [c for c in cards if c.get("idList") != done_lid]
+
+    return cards
 
 
 def create_card(name: str, description: str = "",
