@@ -76,6 +76,25 @@ def format_reminders(reminders: list[dict]) -> str:
     return "\n".join(lines)
 
 
+# ── Timesheet ────────────────────────────────────────────────────────────────
+
+def format_timesheet(entries: list[dict]) -> str:
+    if not entries:
+        return "*Timesheet*\n\n_No entries logged_ 📝"
+
+    by_date: dict[str, list[str]] = {}
+    for entry in entries:
+        by_date.setdefault(entry["date_iso"], []).append(entry["description"])
+
+    lines = ["*Timesheet*\n"]
+    for date_iso in sorted(by_date):
+        lines.append(f"🗓 *{escape(date_iso)}*")
+        for desc in by_date[date_iso]:
+            lines.append(f"  • {escape(desc)}")
+
+    return "\n".join(lines)
+
+
 # ── Combined daily digest ─────────────────────────────────────────────────────
 
 def format_daily(events: list[dict], cards: list[dict]) -> str:

@@ -13,7 +13,8 @@ from services.nlp import parse_intent
 import services.google_calendar as gcal
 import services.trello as trello
 import services.reminders as reminder_svc
-from utils.formatter import format_daily, format_events, format_cards, format_reminders
+import services.timesheet as timesheet_svc
+from utils.formatter import format_daily, format_events, format_cards, format_reminders, format_timesheet, escape
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +125,26 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             format_reminders(rems), parse_mode=ParseMode.MARKDOWN_V2
         )
+
+    elif intent == "add_timesheet":
+        entry = timesheet_svc.add_entry(
+            description = data.get("description", text),
+            date_iso    = data.get("date_iso"),
+        )
+        await update.message.reply_text(
+            f"📝 Logged for `{escape(entry['date_iso'])}`: {escape(entry['description'])}",
+            parse_mode=ParseMode.MARKDOWN_V2,
+        )
+
+    elif intent == "list_timesheet":
+        entries = timesheet_svc.list_entries()
+        await update.message.reply_text(
+            format_timesheet(entries), parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    elif intent == "clear_timesheet":
+        n = timesheet_svc.clear_entries()
+        await update.message.reply_text(f"🗑 Cleared {n} timesheet entr{'y' if n == 1 else 'ies'}\\.")
 
     else:
         await update.message.reply_text(

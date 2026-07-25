@@ -2,6 +2,7 @@
 credentials.json
 token.json
 reminders.json
+timesheet.json
 venv/
 __pycache__/
 *.pyc

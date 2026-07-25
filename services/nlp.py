@@ -26,6 +26,9 @@ Possible intents:
   add_task        — wants to add a Trello card/task
   set_reminder    — wants a reminder for an existing or new item
   list_reminders  — wants to see current reminders
+  add_timesheet   — wants to log/record a timesheet entry for work done
+  list_timesheet  — wants to see logged timesheet entries
+  clear_timesheet — wants to clear/reset the timesheet log
   unknown         — none of the above
 
 JSON schema:
@@ -48,7 +51,11 @@ JSON schema:
     // for set_reminder:
     "title": "<what to remind>",
     "remind_at_iso": "<ISO 8601 datetime of the first occurrence>",
-    "recurrence": "<daily|weekly|null>"
+    "recurrence": "<daily|weekly|null>",
+
+    // for add_timesheet:
+    "description": "<what was worked on>",
+    "date_iso": "<ISO 8601 date (YYYY-MM-DD), default today if not specified>"
   }}
 }}
 If a field is not mentioned, set it to null. Always output valid JSON.

@@ -9,7 +9,7 @@ from telegram.ext import (
     CallbackQueryHandler, filters
 )
 from handlers.commands import (
-    start, today, week, add_event, add_task, reminders
+    start, today, week, add_event, add_task, reminders, timesheet
 )
 from handlers.nlp import handle_message
 from handlers.callbacks import handle_callback
@@ -43,6 +43,7 @@ def main():
     app.add_handler(CommandHandler("add",      add_event))   # /add Meeting at 3pm tomorrow
     app.add_handler(CommandHandler("task",     add_task))    # /task Buy groceries #high
     app.add_handler(CommandHandler("remind",   reminders))   # /remind list | clear
+    app.add_handler(CommandHandler("timesheet", timesheet))  # /timesheet list | clear | <description>
 
     # Inline button callbacks (priority picker, confirm dialogs, etc.)
     app.add_handler(CallbackQueryHandler(handle_callback))

@@ -2,7 +2,7 @@
 test_local.py
 Local integration test for all bot services (no Telegram needed).
 Run: python test_local.py [section]
-  section = gcal | trello | reminders | nlp | formatter | all  (default: all)
+  section = gcal | trello | reminders | timesheet | nlp | formatter | all  (default: all)
 
 Each test prints PASS / FAIL and a summary at the end.
 Created events and cards are deleted after the test run.
@@ -321,7 +321,100 @@ def test_reminders():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  4. NLP / parse_intent
+#  4. Timesheet
+# ══════════════════════════════════════════════════════════════════════════════
+
+def test_timesheet():
+    import services.timesheet as ts_svc
+    from utils.dt import now
+    from datetime import timedelta
+
+    section("Timesheet (file-based, no scheduler)")
+
+    # 4a. Clear any leftover test entries first
+    ts_svc.clear_entries()
+
+    # 4b. Add an entry (defaults to today's date)
+    e1 = run(
+        "timesheet.add_entry (default date)",
+        lambda: ts_svc.add_entry(description="[TEST] Fixed the reminder scheduler bug"),
+    )
+
+    def _check_default_date():
+        expected = now().strftime("%Y-%m-%d")
+        if e1["date_iso"] != expected:
+            raise AssertionError(f"Expected date_iso={expected}, got {e1['date_iso']}")
+        return f"date_iso={e1['date_iso']}"
+
+    run("timesheet: default date_iso is today", _check_default_date)
+
+    # 4c. Add a second entry for the same day (accumulation)
+    e2 = run(
+        "timesheet.add_entry (second entry, same day)",
+        lambda: ts_svc.add_entry(description="[TEST] Reviewed the timesheet PR"),
+    )
+
+    # 4d. Add an entry for an explicit past date
+    yesterday = (now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    e3 = run(
+        "timesheet.add_entry (explicit date_iso)",
+        lambda: ts_svc.add_entry(description="[TEST] Backfilled entry", date_iso=yesterday),
+    )
+
+    # 4e. List entries
+    run(
+        "timesheet.list_entries()",
+        lambda: f"{len(ts_svc.list_entries())} entr(y/ies): " +
+                ", ".join(e["description"] for e in ts_svc.list_entries()),
+    )
+
+    # 4f. Verify count / accumulation
+    def _check_count():
+        entries = ts_svc.list_entries()
+        if len(entries) != 3:
+            raise AssertionError(f"Expected 3 entries, got {len(entries)}")
+        return "count correct (accumulated, not overwritten)"
+
+    run("timesheet: count == 3 after adding 3 entries", _check_count)
+
+    # 4g. Verify each entry has a unique id
+    def _check_unique_ids():
+        entries = ts_svc.list_entries()
+        ids = {e["id"] for e in entries}
+        if len(ids) != len(entries):
+            raise AssertionError("Duplicate ids found among entries")
+        return "all ids unique"
+
+    run("timesheet: entries have unique ids", _check_unique_ids)
+
+    # 4h. Clear all
+    run(
+        "timesheet.clear_entries()",
+        lambda: f"cleared {ts_svc.clear_entries()} entr(y/ies)",
+    )
+
+    # 4i. Verify empty after clear
+    def _check_empty():
+        entries = ts_svc.list_entries()
+        if entries:
+            raise AssertionError(f"Expected 0 entries after clear, got {len(entries)}")
+        return "empty"
+
+    run("timesheet: empty after clear", _check_empty)
+
+    # 4j. clear_entries on already-empty store returns 0, doesn't crash
+    run(
+        "timesheet.clear_entries() when already empty",
+        lambda: f"cleared {ts_svc.clear_entries()} entr(y/ies)",
+    )
+
+    # cleanup safety net
+    ts_svc.clear_entries()
+    print(f"  {GREEN}(cleanup: cleared test timesheet entries){RESET}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  5. NLP / parse_intent
 # ══════════════════════════════════════════════════════════════════════════════
 
 def test_nlp():
@@ -339,6 +432,9 @@ def test_nlp():
         ("add_task #high",  "Create task Buy groceries #high",                "add_task"),
         ("set_reminder",    "Remind me to call Ali at 5pm today",             "set_reminder"),
         ("list_reminders",  "Show me my reminders",                           "list_reminders"),
+        ("add_timesheet",   "Log timesheet: fixed the deploy config today",   "add_timesheet"),
+        ("list_timesheet",  "Show me my timesheet",                           "list_timesheet"),
+        ("clear_timesheet", "Clear my timesheet",                             "clear_timesheet"),
         ("unknown",         "What's the weather in Jakarta?",                  "unknown"),
     ]
 
@@ -375,14 +471,24 @@ def test_nlp():
 
     run("NLP: add_task captures priority", _check_priority)
 
+    # Extra: verify add_timesheet defaults date_iso when not mentioned
+    def _check_timesheet_desc():
+        result = parse_intent("Log timesheet: reviewed the timesheet feature PR")
+        desc = result.get("data", {}).get("description")
+        if not desc:
+            raise AssertionError(f"Expected description, got: {result}")
+        return f"description={desc}"
+
+    run("NLP: add_timesheet populates description", _check_timesheet_desc)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  5. Formatter utilities
+#  6. Formatter utilities
 # ══════════════════════════════════════════════════════════════════════════════
 
 def test_formatter():
     from utils.formatter import (
-        format_events, format_cards, format_reminders, format_daily, escape
+        format_events, format_cards, format_reminders, format_timesheet, format_daily, escape
     )
     from utils.dt import now
     from datetime import timedelta
@@ -402,6 +508,13 @@ def test_formatter():
     ]
     sample_reminders = [
         {"id": "abc", "title": "Call doctor", "remind_at_iso": dt_str},
+    ]
+    today_iso = now().strftime("%Y-%m-%d")
+    yesterday_iso = (now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    sample_timesheet = [
+        {"id": "t1", "date_iso": yesterday_iso, "description": "Backfilled entry"},
+        {"id": "t2", "date_iso": today_iso,      "description": "Fixed the reminder bug"},
+        {"id": "t3", "date_iso": today_iso,      "description": "Reviewed the timesheet PR"},
     ]
 
     # 5a. escape
@@ -432,7 +545,22 @@ def test_formatter():
     run("format_reminders (empty)",
         lambda: format_reminders([]))
 
-    # 5h. format_daily combined
+    # 5h. format_timesheet with data, grouped by date
+    def _check_timesheet_grouping():
+        out = format_timesheet(sample_timesheet)
+        if out.count("🗓") != 2:
+            raise AssertionError(f"Expected 2 date groups, got: {out}")
+        if out.count("•") != 3:
+            raise AssertionError(f"Expected 3 entry bullets, got: {out}")
+        return out.split("\n")[0]
+
+    run("format_timesheet (3 entries, 2 dates)", _check_timesheet_grouping)
+
+    # 5i. format_timesheet empty
+    run("format_timesheet (empty)",
+        lambda: format_timesheet([]))
+
+    # 5j. format_daily combined
     run("format_daily (events + cards)",
         lambda: "OK" if "\n\n" in format_daily(sample_events, sample_cards) else "missing separator")
 
@@ -445,6 +573,7 @@ SECTIONS = {
     "gcal":      test_gcal,
     "trello":    test_trello,
     "reminders": test_reminders,
+    "timesheet": test_timesheet,
     "nlp":       test_nlp,
     "formatter": test_formatter,
 }
