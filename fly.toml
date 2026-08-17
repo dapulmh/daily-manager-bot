@@ -1,20 +1,20 @@
-app = "daily-manager-bot"
-primary_region = "sin"  # Singapore — closest to Jakarta
+app = 'daily-manager-bot-rolling-lagoon-3908'
+primary_region = 'sin'
 
 [build]
 
 [env]
-  TIMEZONE = "Asia/Jakarta"
-  GROQ_MODEL = "llama-3.1-8b-instant"
-  GOOGLE_CALENDAR_ID = "primary"
-  GOOGLE_TOKEN_FILE = "/data/token.json"
-  GOOGLE_CREDENTIALS_FILE = "/data/credentials.json"
+  GOOGLE_CALENDAR_ID = 'primary'
+  GOOGLE_CREDENTIALS_FILE = '/data/credentials.json'
+  GOOGLE_TOKEN_FILE = '/data/token.json'
+  GROQ_MODEL = 'openai/gpt-oss-20b'
+  TIMEZONE = 'Asia/Jakarta'
 
-[mounts]
-  source = "bot_data"
-  destination = "/data"
+[[mounts]]
+  source = 'bot_data'
+  destination = '/data'
 
 [[vm]]
-  memory = "256mb"
-  cpu_kind = "shared"
+  memory = '256mb'
+  cpu_kind = 'shared'
   cpus = 1

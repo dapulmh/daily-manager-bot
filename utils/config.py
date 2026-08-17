@@ -32,7 +32,7 @@ CONFIG = {
 
     # Groq (free NLP)
     "GROQ_API_KEY":     _require("GROQ_API_KEY"),
-    "GROQ_MODEL":       os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
+    "GROQ_MODEL":       os.getenv("GROQ_MODEL", "openai/gpt-oss-20b"),
 
     # Timezone
     "TIMEZONE": os.getenv("TIMEZONE", "Asia/Jakarta"),
