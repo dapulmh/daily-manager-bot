@@ -51,7 +51,14 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     # ── Route by intent ───────────────────────────────────────────────────────
+    try:
+        await _route_intent(update, intent, data, text)
+    except Exception as e:
+        logger.error("handle_message routing error (intent=%s): %s", intent, e)
+        await update.message.reply_text(f"❌ Error: {escape(str(e))}", parse_mode=ParseMode.MARKDOWN_V2)
 
+
+async def _route_intent(update: Update, intent: str, data: dict, text: str):
     if intent == "view_today":
         await update.message.reply_text("Fetching your day…")
         events = gcal.get_events("today")
@@ -114,7 +121,6 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             recurrence    = data.get("recurrence"),
         )
         from utils.dt import fmt_dt
-        from utils.formatter import escape
         time_str   = escape(fmt_dt(rem["remind_at_iso"]))
         title      = escape(rem["title"])
         recurrence = rem.get("recurrence")
@@ -151,7 +157,9 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"🗑 Cleared {n} timesheet entr{'y' if n == 1 else 'ies'}\\.")
 
     elif intent == "add_expenditure":
-        if data.get("amount") is None:
+        try:
+            amount = int(round(float(data.get("amount"))))
+        except (TypeError, ValueError):
             await update.message.reply_text(
                 "I need an amount\\. Try: _'spent 25000 on lunch'_",
                 parse_mode=ParseMode.MARKDOWN_V2,
@@ -159,7 +167,7 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             return
         entry = expenditure_svc.add_entry(
             description = data.get("description", text),
-            amount      = data.get("amount"),
+            amount      = amount,
             date_iso    = data.get("date_iso"),
         )
         await update.message.reply_text(
