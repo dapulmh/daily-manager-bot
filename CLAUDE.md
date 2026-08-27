@@ -23,7 +23,7 @@ python bot.py
 # Integration tests — hit real Google Calendar/Trello/Groq APIs, no mocks.
 # Any events/cards created during a run are deleted again at the end (see _cleanup in test_local.py).
 python test_local.py            # all sections
-python test_local.py gcal       # gcal | trello | reminders | timesheet | nlp | formatter
+python test_local.py gcal       # gcal | trello | reminders | timesheet | expenditure | nlp | formatter
 ```
 
 There is no unit test framework, linter, or type checker configured — `test_local.py` is the only test entry
@@ -32,13 +32,13 @@ point, and it is a live integration test, not something to run in CI against fak
 ## Deployment
 
 - Deployed to Fly.io (`fly.toml`), single shared-cpu 256mb VM in `sin` (Singapore), app runs out of a `/data`
-  volume mount that persists `credentials.json`, `token.json`, `reminders.json`, and `timesheet.json` across
-  deploys/restarts.
+  volume mount that persists `credentials.json`, `token.json`, `reminders.json`, `timesheet.json`, and
+  `expenditure.json` across deploys/restarts.
 - `.github/workflows/fly-deploy.yml` auto-deploys on push to `main` via `flyctl deploy --remote-only` (needs
   `FLY_API_TOKEN` secret).
-- `services/reminders.py` and `services/timesheet.py` both resolve their JSON store path to `/data/*.json` if
-  `/data` exists, else fall back to the repo root — this is what makes local dev and Fly deployment share code
-  without config.
+- `services/reminders.py`, `services/timesheet.py`, and `services/expenditure.py` all resolve their JSON store
+  path to `/data/*.json` if `/data` exists, else fall back to the repo root — this is what makes local dev and
+  Fly deployment share code without config.
 - The original README also documents a manual systemd/Oracle-Cloud deployment path (`daily-manager-bot.service`)
   as an alternative to Fly; that path is not exercised by CI.
 
@@ -47,7 +47,7 @@ point, and it is a live integration test, not something to run in CI against fak
 Three-layer structure, all wired together in `bot.py`:
 
 - `handlers/` — Telegram-facing layer. `commands.py` has one `@private_only` async function per slash command
-  (`/start /today /week /add /task /remind /timesheet`). `nlp.py` has a single `handle_message` that runs any
+  (`/start /today /week /add /task /remind /timesheet /expense /analysis`). `nlp.py` has a single `handle_message` that runs any
   non-command text through `parse_intent` and branches on `intent` to call the same services the command handlers
   use. `callbacks.py` handles inline-keyboard button presses (`priority:<card_id>:<priority>`,
   `move:<card_id>:<list_name>`).

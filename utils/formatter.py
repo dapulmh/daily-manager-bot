@@ -95,6 +95,51 @@ def format_timesheet(entries: list[dict]) -> str:
     return "\n".join(lines)
 
 
+# ── Expenditure ──────────────────────────────────────────────────────────────
+
+def format_rupiah(amount: int) -> str:
+    return f"Rp {amount:,}".replace(",", ".")
+
+
+def format_expenditure(entries: list[dict]) -> str:
+    if not entries:
+        return "*Expenditure*\n\n_No entries logged_ 💸"
+
+    by_date: dict[str, list[dict]] = {}
+    for entry in entries:
+        by_date.setdefault(entry["date_iso"], []).append(entry)
+
+    lines = ["*Expenditure*\n"]
+    for date_iso in sorted(by_date):
+        day_total = sum(e["amount"] for e in by_date[date_iso])
+        lines.append(f"🗓 *{escape(date_iso)}* — {escape(format_rupiah(day_total))}")
+        for e in by_date[date_iso]:
+            lines.append(f"  • {escape(e['description'])} — {escape(format_rupiah(e['amount']))}")
+
+    return "\n".join(lines)
+
+
+def format_expenditure_analysis(analysis: dict) -> str:
+    if analysis["entry_count"] == 0:
+        return "*Expenditure Analysis*\n\n_No entries logged_ 📊"
+
+    start, end   = analysis["date_range"]
+    high_day, high_amt = analysis["highest_day"]
+    low_day, low_amt   = analysis["lowest_day"]
+
+    lines = [
+        "*Expenditure Analysis*\n",
+        f"📅 Range: {escape(start)} → {escape(end)}",
+        f"🗓 Days recorded: {analysis['total_days']}",
+        f"🧾 Entries: {analysis['entry_count']}",
+        f"💰 Total: {escape(format_rupiah(analysis['total_amount']))}",
+        f"📊 Average/day: {escape(format_rupiah(round(analysis['avg_per_day'])))}",
+        f"🔺 Highest day: {escape(high_day)} — {escape(format_rupiah(high_amt))}",
+        f"🔻 Lowest day: {escape(low_day)} — {escape(format_rupiah(low_amt))}",
+    ]
+    return "\n".join(lines)
+
+
 # ── Combined daily digest ─────────────────────────────────────────────────────
 
 def format_daily(events: list[dict], cards: list[dict]) -> str:

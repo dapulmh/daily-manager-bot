@@ -414,6 +414,128 @@ def test_timesheet():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  4b. Expenditure (file-based, no scheduler)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def test_expenditure():
+    import services.expenditure as exp_svc
+    from utils.dt import now
+    from datetime import timedelta
+
+    section("Expenditure (file-based, no scheduler)")
+
+    # Clear any leftover test entries first
+    exp_svc.clear_entries()
+
+    # Add an entry (defaults to today's date)
+    e1 = run(
+        "expenditure.add_entry (default date)",
+        lambda: exp_svc.add_entry(description="[TEST] Lunch at warung", amount=25000),
+    )
+
+    def _check_default_date():
+        expected = now().strftime("%Y-%m-%d")
+        if e1["date_iso"] != expected:
+            raise AssertionError(f"Expected date_iso={expected}, got {e1['date_iso']}")
+        return f"date_iso={e1['date_iso']}"
+
+    run("expenditure: default date_iso is today", _check_default_date)
+
+    # Second entry, same day (accumulation)
+    run(
+        "expenditure.add_entry (second entry, same day)",
+        lambda: exp_svc.add_entry(description="[TEST] Coffee", amount=15000),
+    )
+
+    # Entry for an explicit past date
+    yesterday = (now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    run(
+        "expenditure.add_entry (explicit date_iso)",
+        lambda: exp_svc.add_entry(description="[TEST] Groceries", amount=100000, date_iso=yesterday),
+    )
+
+    # List entries
+    run(
+        "expenditure.list_entries()",
+        lambda: f"{len(exp_svc.list_entries())} entr(y/ies): " +
+                ", ".join(e["description"] for e in exp_svc.list_entries()),
+    )
+
+    def _check_count():
+        entries = exp_svc.list_entries()
+        if len(entries) != 3:
+            raise AssertionError(f"Expected 3 entries, got {len(entries)}")
+        return "count correct (accumulated, not overwritten)"
+
+    run("expenditure: count == 3 after adding 3 entries", _check_count)
+
+    def _check_unique_ids():
+        entries = exp_svc.list_entries()
+        ids = {e["id"] for e in entries}
+        if len(ids) != len(entries):
+            raise AssertionError("Duplicate ids found among entries")
+        return "all ids unique"
+
+    run("expenditure: entries have unique ids", _check_unique_ids)
+
+    # Verify analyze_entries() math against hand-computed expected values
+    def _check_analysis():
+        entries = exp_svc.list_entries()
+        result = exp_svc.analyze_entries(entries)
+        if result["total_amount"] != 140000:
+            raise AssertionError(f"Expected total_amount=140000, got {result['total_amount']}")
+        if result["total_days"] != 2:
+            raise AssertionError(f"Expected total_days=2, got {result['total_days']}")
+        if result["entry_count"] != 3:
+            raise AssertionError(f"Expected entry_count=3, got {result['entry_count']}")
+        if result["per_day"].get(yesterday) != 100000:
+            raise AssertionError(f"Expected per_day[{yesterday}]=100000, got {result['per_day']}")
+        today_iso = now().strftime("%Y-%m-%d")
+        if result["per_day"].get(today_iso) != 40000:
+            raise AssertionError(f"Expected per_day[{today_iso}]=40000, got {result['per_day']}")
+        if result["highest_day"] != (yesterday, 100000):
+            raise AssertionError(f"Expected highest_day=({yesterday}, 100000), got {result['highest_day']}")
+        if result["avg_per_day"] != 70000:
+            raise AssertionError(f"Expected avg_per_day=70000, got {result['avg_per_day']}")
+        return f"total={result['total_amount']} days={result['total_days']} avg={result['avg_per_day']}"
+
+    run("expenditure: analyze_entries() computes correct totals", _check_analysis)
+
+    # analyze_entries() on empty list doesn't crash
+    def _check_analysis_empty():
+        result = exp_svc.analyze_entries([])
+        if result["entry_count"] != 0 or result["total_amount"] != 0:
+            raise AssertionError(f"Expected zeroed analysis, got {result}")
+        return "zeroed analysis for empty input"
+
+    run("expenditure: analyze_entries([]) doesn't crash", _check_analysis_empty)
+
+    # Clear all
+    run(
+        "expenditure.clear_entries()",
+        lambda: f"cleared {exp_svc.clear_entries()} entr(y/ies)",
+    )
+
+    def _check_empty():
+        entries = exp_svc.list_entries()
+        if entries:
+            raise AssertionError(f"Expected 0 entries after clear, got {len(entries)}")
+        return "empty"
+
+    run("expenditure: empty after clear", _check_empty)
+
+    # clear_entries on already-empty store returns 0, doesn't crash
+    run(
+        "expenditure.clear_entries() when already empty",
+        lambda: f"cleared {exp_svc.clear_entries()} entr(y/ies)",
+    )
+
+    # cleanup safety net
+    exp_svc.clear_entries()
+    print(f"  {GREEN}(cleanup: cleared test expenditure entries){RESET}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  5. NLP / parse_intent
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -435,6 +557,10 @@ def test_nlp():
         ("add_timesheet",   "Log timesheet: fixed the deploy config today",   "add_timesheet"),
         ("list_timesheet",  "Show me my timesheet",                           "list_timesheet"),
         ("clear_timesheet", "Clear my timesheet",                             "clear_timesheet"),
+        ("add_expenditure",   "I spent 25000 on lunch at warung today",        "add_expenditure"),
+        ("list_expenditure",  "Show me my expenses",                          "list_expenditure"),
+        ("clear_expenditure", "Clear my expenditure log",                     "clear_expenditure"),
+        ("analyze_expenditure", "How much have I spent this month?",          "analyze_expenditure"),
         ("unknown",         "What's the weather in Jakarta?",                  "unknown"),
     ]
 
@@ -481,6 +607,18 @@ def test_nlp():
 
     run("NLP: add_timesheet populates description", _check_timesheet_desc)
 
+    # Extra: verify add_expenditure returns amount and description
+    def _check_expenditure_amount():
+        result = parse_intent("I spent 25000 on lunch at warung today")
+        data = result.get("data", {})
+        if data.get("amount") is None:
+            raise AssertionError(f"Expected amount, got: {result}")
+        if not data.get("description"):
+            raise AssertionError(f"Expected description, got: {result}")
+        return f"amount={data.get('amount')} description={data.get('description')}"
+
+    run("NLP: add_expenditure populates amount + description", _check_expenditure_amount)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  6. Formatter utilities
@@ -488,8 +626,10 @@ def test_nlp():
 
 def test_formatter():
     from utils.formatter import (
-        format_events, format_cards, format_reminders, format_timesheet, format_daily, escape
+        format_events, format_cards, format_reminders, format_timesheet, format_daily, escape,
+        format_rupiah, format_expenditure, format_expenditure_analysis
     )
+    import services.expenditure as exp_svc
     from utils.dt import now
     from datetime import timedelta
 
@@ -564,18 +704,52 @@ def test_formatter():
     run("format_daily (events + cards)",
         lambda: "OK" if "\n\n" in format_daily(sample_events, sample_cards) else "missing separator")
 
+    # 5k. format_rupiah
+    run("format_rupiah (thousand separators)",
+        lambda: format_rupiah(1250000))
+
+    sample_expenditure = [
+        {"id": "e1", "date_iso": yesterday_iso, "description": "Groceries", "amount": 100000},
+        {"id": "e2", "date_iso": today_iso,      "description": "Lunch at warung", "amount": 25000},
+        {"id": "e3", "date_iso": today_iso,      "description": "Coffee", "amount": 15000},
+    ]
+
+    # 5l. format_expenditure with data, grouped by date
+    def _check_expenditure_grouping():
+        out = format_expenditure(sample_expenditure)
+        if out.count("🗓") != 2:
+            raise AssertionError(f"Expected 2 date groups, got: {out}")
+        if out.count("•") != 3:
+            raise AssertionError(f"Expected 3 entry bullets, got: {out}")
+        return out.split("\n")[0]
+
+    run("format_expenditure (3 entries, 2 dates)", _check_expenditure_grouping)
+
+    # 5m. format_expenditure empty
+    run("format_expenditure (empty)",
+        lambda: format_expenditure([]))
+
+    # 5n. format_expenditure_analysis with data
+    run("format_expenditure_analysis (3 entries)",
+        lambda: format_expenditure_analysis(exp_svc.analyze_entries(sample_expenditure)).split("\n")[0])
+
+    # 5o. format_expenditure_analysis empty
+    run("format_expenditure_analysis (empty)",
+        lambda: format_expenditure_analysis(exp_svc.analyze_entries([])))
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Main
 # ══════════════════════════════════════════════════════════════════════════════
 
 SECTIONS = {
-    "gcal":      test_gcal,
-    "trello":    test_trello,
-    "reminders": test_reminders,
-    "timesheet": test_timesheet,
-    "nlp":       test_nlp,
-    "formatter": test_formatter,
+    "gcal":        test_gcal,
+    "trello":      test_trello,
+    "reminders":   test_reminders,
+    "timesheet":   test_timesheet,
+    "expenditure": test_expenditure,
+    "nlp":         test_nlp,
+    "formatter":   test_formatter,
 }
 
 if __name__ == "__main__":

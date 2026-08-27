@@ -1,0 +1,134 @@
+{
+  ".claude/settings.local.json": {
+    "mtime": 1787849897.5184646,
+    "seen": 1787850638.005047,
+    "ast_hash": "a894d8311e0c437743844266fc10823c",
+    "semantic_hash": "a894d8311e0c437743844266fc10823c"
+  },
+  "bot.py": {
+    "mtime": 1784954292.106374,
+    "seen": 1787850638.005048,
+    "ast_hash": "67e07b97dd459124f1d84e1195700742",
+    "semantic_hash": "67e07b97dd459124f1d84e1195700742"
+  },
+  "handlers/__init__.py": {
+    "mtime": 1781365861.0,
+    "seen": 1787850638.005049,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "handlers/callbacks.py": {
+    "mtime": 1781365858.0,
+    "seen": 1787850638.0050502,
+    "ast_hash": "32ef15240f52587a8fb3489eeec79e5c",
+    "semantic_hash": "32ef15240f52587a8fb3489eeec79e5c"
+  },
+  "handlers/commands.py": {
+    "mtime": 1784954296.8237925,
+    "seen": 1787850638.0050502,
+    "ast_hash": "1ed545cc1103baca48e9f0069c84c32b",
+    "semantic_hash": "1ed545cc1103baca48e9f0069c84c32b"
+  },
+  "handlers/nlp.py": {
+    "mtime": 1784954271.2658417,
+    "seen": 1787850638.005051,
+    "ast_hash": "0d723631b7f62089e82c417b828142e1",
+    "semantic_hash": "0d723631b7f62089e82c417b828142e1"
+  },
+  "services/__init__.py": {
+    "mtime": 1781365863.0,
+    "seen": 1787850638.0050519,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "services/google_calendar.py": {
+    "mtime": 1781365753.0,
+    "seen": 1787850638.005053,
+    "ast_hash": "bcfad64be00ebda082b56cfe2269a117",
+    "semantic_hash": "bcfad64be00ebda082b56cfe2269a117"
+  },
+  "services/nlp.py": {
+    "mtime": 1784954259.4616535,
+    "seen": 1787850638.005053,
+    "ast_hash": "1b342207ebd4bacb5c8d0f89d7524fdd",
+    "semantic_hash": "1b342207ebd4bacb5c8d0f89d7524fdd"
+  },
+  "services/reminders.py": {
+    "mtime": 1784383904.2823055,
+    "seen": 1787850638.005054,
+    "ast_hash": "e639e80cd83ec618f934b4efb38b7b30",
+    "semantic_hash": "e639e80cd83ec618f934b4efb38b7b30"
+  },
+  "services/timesheet.py": {
+    "mtime": 1784954244.9571402,
+    "seen": 1787850638.005055,
+    "ast_hash": "4711e774c66f156248cb15a8f908f3df",
+    "semantic_hash": "4711e774c66f156248cb15a8f908f3df"
+  },
+  "services/trello.py": {
+    "mtime": 1784450498.63848,
+    "seen": 1787850638.005056,
+    "ast_hash": "01a0d6a0c7ae17ed99050e8ac5b627cc",
+    "semantic_hash": "01a0d6a0c7ae17ed99050e8ac5b627cc"
+  },
+  "test_local.py": {
+    "mtime": 1784954405.0022056,
+    "seen": 1787850638.005056,
+    "ast_hash": "1a401a6a104b7945c8d0cac5713de5ff",
+    "semantic_hash": "1a401a6a104b7945c8d0cac5713de5ff"
+  },
+  "utils/__init__.py": {
+    "mtime": 1781365865.0,
+    "seen": 1787850638.005057,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "utils/auth.py": {
+    "mtime": 1781365737.0,
+    "seen": 1787850638.005058,
+    "ast_hash": "994f1e7e1db2d9cbb8fbf7ec42b8f45d",
+    "semantic_hash": "994f1e7e1db2d9cbb8fbf7ec42b8f45d"
+  },
+  "utils/config.py": {
+    "mtime": 1786983568.0289738,
+    "seen": 1787850638.005058,
+    "ast_hash": "b31f55491ac4718dddb75843a28613c2",
+    "semantic_hash": "b31f55491ac4718dddb75843a28613c2"
+  },
+  "utils/dt.py": {
+    "mtime": 1781365743.0,
+    "seen": 1787850638.005059,
+    "ast_hash": "56d703183716c5c1aaf591b9a89c4551",
+    "semantic_hash": "56d703183716c5c1aaf591b9a89c4551"
+  },
+  "utils/formatter.py": {
+    "mtime": 1784954250.2875347,
+    "seen": 1787850638.0050602,
+    "ast_hash": "b120122479546beb1f5ddcb3d50be510",
+    "semantic_hash": "b120122479546beb1f5ddcb3d50be510"
+  },
+  ".github/workflows/fly-deploy.yml": {
+    "mtime": 1784439990.7015634,
+    "seen": 1787850638.0050602,
+    "ast_hash": "4e8420462262fc0faa94c3c55f8dacff",
+    "semantic_hash": "4e8420462262fc0faa94c3c55f8dacff"
+  },
+  "CLAUDE.md": {
+    "mtime": 1786983249.739719,
+    "seen": 1787850638.0050611,
+    "ast_hash": "905bf62304e9c7715f9a5d7510361529",
+    "semantic_hash": "905bf62304e9c7715f9a5d7510361529"
+  },
+  "README.md": {
+    "mtime": 1781365909.0,
+    "seen": 1787850638.0050619,
+    "ast_hash": "ec1a5fb18993c919a2e5af58fda4ec91",
+    "semantic_hash": "ec1a5fb18993c919a2e5af58fda4ec91"
+  },
+  "requirements.txt": {
+    "mtime": 1781415043.6079814,
+    "seen": 1787850638.0050619,
+    "ast_hash": "49ec9c12a408a7dccecc437904b08acf",
+    "semantic_hash": "49ec9c12a408a7dccecc437904b08acf"
+  }
+}

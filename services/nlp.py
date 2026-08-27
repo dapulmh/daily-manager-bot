@@ -29,6 +29,10 @@ Possible intents:
   add_timesheet   — wants to log/record a timesheet entry for work done
   list_timesheet  — wants to see logged timesheet entries
   clear_timesheet — wants to clear/reset the timesheet log
+  add_expenditure    — wants to log/record money spent (an expense)
+  list_expenditure   — wants to see logged expenditure entries
+  clear_expenditure  — wants to clear/reset the expenditure log
+  analyze_expenditure — wants totals/averages/analysis of their spending
   unknown         — none of the above
 
 JSON schema:
@@ -55,6 +59,11 @@ JSON schema:
 
     // for add_timesheet:
     "description": "<what was worked on>",
+    "date_iso": "<ISO 8601 date (YYYY-MM-DD), default today if not specified>",
+
+    // for add_expenditure:
+    "description": "<what the money was spent on>",
+    "amount": <integer amount in Rupiah, no currency symbol or separators>,
     "date_iso": "<ISO 8601 date (YYYY-MM-DD), default today if not specified>"
   }}
 }}

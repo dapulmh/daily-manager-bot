@@ -14,7 +14,11 @@ import services.google_calendar as gcal
 import services.trello as trello
 import services.reminders as reminder_svc
 import services.timesheet as timesheet_svc
-from utils.formatter import format_daily, format_events, format_cards, format_reminders, format_timesheet, escape
+import services.expenditure as expenditure_svc
+from utils.formatter import (
+    format_daily, format_events, format_cards, format_reminders, format_timesheet,
+    format_expenditure, format_expenditure_analysis, format_rupiah, escape
+)
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +149,41 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     elif intent == "clear_timesheet":
         n = timesheet_svc.clear_entries()
         await update.message.reply_text(f"🗑 Cleared {n} timesheet entr{'y' if n == 1 else 'ies'}\\.")
+
+    elif intent == "add_expenditure":
+        if data.get("amount") is None:
+            await update.message.reply_text(
+                "I need an amount\\. Try: _'spent 25000 on lunch'_",
+                parse_mode=ParseMode.MARKDOWN_V2,
+            )
+            return
+        entry = expenditure_svc.add_entry(
+            description = data.get("description", text),
+            amount      = data.get("amount"),
+            date_iso    = data.get("date_iso"),
+        )
+        await update.message.reply_text(
+            f"💸 Logged for `{escape(entry['date_iso'])}`: {escape(entry['description'])} — "
+            f"{escape(format_rupiah(entry['amount']))}",
+            parse_mode=ParseMode.MARKDOWN_V2,
+        )
+
+    elif intent == "list_expenditure":
+        entries = expenditure_svc.list_entries()
+        await update.message.reply_text(
+            format_expenditure(entries), parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    elif intent == "clear_expenditure":
+        n = expenditure_svc.clear_entries()
+        await update.message.reply_text(f"🗑 Cleared {n} expenditure entr{'y' if n == 1 else 'ies'}\\.")
+
+    elif intent == "analyze_expenditure":
+        entries = expenditure_svc.list_entries()
+        result  = expenditure_svc.analyze_entries(entries)
+        await update.message.reply_text(
+            format_expenditure_analysis(result), parse_mode=ParseMode.MARKDOWN_V2
+        )
 
     else:
         await update.message.reply_text(
