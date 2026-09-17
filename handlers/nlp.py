@@ -15,9 +15,10 @@ import services.trello as trello
 import services.reminders as reminder_svc
 import services.timesheet as timesheet_svc
 import services.expenditure as expenditure_svc
+import services.insight as insight_svc
 from utils.formatter import (
     format_daily, format_events, format_cards, format_reminders, format_timesheet,
-    format_expenditure, format_expenditure_analysis, format_rupiah, escape
+    format_expenditure, format_expenditure_insight, format_rupiah, escape
 )
 
 logger = logging.getLogger(__name__)
@@ -187,10 +188,9 @@ async def _route_intent(update: Update, intent: str, data: dict, text: str):
         await update.message.reply_text(f"🗑 Cleared {n} expenditure entr{'y' if n == 1 else 'ies'}\\.")
 
     elif intent == "analyze_expenditure":
-        entries = expenditure_svc.list_entries()
-        result  = expenditure_svc.analyze_entries(entries)
+        result, insight_text = insight_svc.analyze_with_insight(question=data.get("question"))
         await update.message.reply_text(
-            format_expenditure_analysis(result), parse_mode=ParseMode.MARKDOWN_V2
+            format_expenditure_insight(result, insight_text), parse_mode=ParseMode.MARKDOWN_V2
         )
 
     else:

@@ -140,6 +140,37 @@ def format_expenditure_analysis(analysis: dict) -> str:
     return "\n".join(lines)
 
 
+def format_expenditure_insight(analysis: dict, insight_text: str) -> str:
+    """Stats block (as format_expenditure_analysis) plus category/trend breakdown and an AI insight."""
+    if analysis["entry_count"] == 0:
+        return "*Expenditure Analysis*\n\n_No entries logged_ 📊"
+
+    lines = [format_expenditure_analysis(analysis)]
+
+    if analysis.get("by_category"):
+        lines.append("\n📂 *By category:*")
+        for cat, amt in sorted(analysis["by_category"].items(), key=lambda kv: -kv[1]):
+            lines.append(f"  • {escape(cat.title())}: {escape(format_rupiah(amt))}")
+
+    if analysis.get("top_expenses"):
+        lines.append("\n🏆 *Biggest expenses:*")
+        for e in analysis["top_expenses"]:
+            lines.append(
+                f"  • {escape(e['description'])} — {escape(format_rupiah(e['amount']))} "
+                f"\\({escape(e['date_iso'])}\\)"
+            )
+
+    trend = analysis.get("trend")
+    if trend and trend.get("change_pct") is not None:
+        change = trend["change_pct"]
+        arrow  = "🔺" if change > 0 else "🔻" if change < 0 else "➖"
+        lines.append(f"\n{arrow} 7\\-day trend: {escape(f'{change:+.0f}%')} vs previous week")
+
+    lines.append(f"\n💡 *Insight:*\n{escape(insight_text)}")
+
+    return "\n".join(lines)
+
+
 # ── Combined daily digest ─────────────────────────────────────────────────────
 
 def format_daily(events: list[dict], cards: list[dict]) -> str:

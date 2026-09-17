@@ -64,7 +64,10 @@ JSON schema:
     // for add_expenditure:
     "description": "<what the money was spent on>",
     "amount": <integer amount in Rupiah, no currency symbol or separators>,
-    "date_iso": "<ISO 8601 date (YYYY-MM-DD), default today if not specified>"
+    "date_iso": "<ISO 8601 date (YYYY-MM-DD), default today if not specified>",
+
+    // for analyze_expenditure:
+    "question": "<the specific question being asked about spending, e.g. 'why did I overspend on food this month', or null if it's just a generic request for a summary>"
   }}
 }}
 If a field is not mentioned, set it to null. Always output valid JSON.
@@ -90,7 +93,11 @@ def parse_intent(text: str) -> dict:
                 {"role": "user",   "content": text},
             ],
             temperature=0,
-            max_tokens=400,
+            # openai/gpt-oss-20b is a reasoning model - it burns completion tokens on chain-of-thought
+            # (visible via resp.choices[0].message.reasoning) before writing the JSON content. Too tight
+            # a budget here truncates mid-reasoning and leaves content empty on harder inputs (e.g. relative
+            # dates like "next Monday"). 800 leaves enough headroom for reasoning + the JSON payload.
+            max_tokens=800,
         )
         raw = resp.choices[0].message.content.strip()
         return json.loads(raw)

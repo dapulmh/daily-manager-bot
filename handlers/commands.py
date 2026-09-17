@@ -11,13 +11,14 @@ from telegram.constants import ParseMode
 from utils.auth import private_only
 from utils.formatter import (
     format_daily, format_events, format_cards, format_reminders, format_timesheet,
-    format_expenditure, format_expenditure_analysis, format_rupiah, escape
+    format_expenditure, format_expenditure_insight, format_rupiah, escape
 )
 import services.google_calendar as gcal
 import services.trello as trello
 import services.reminders as reminder_svc
 import services.timesheet as timesheet_svc
 import services.expenditure as expenditure_svc
+import services.insight as insight_svc
 from services.nlp import parse_intent
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "/remind — list or clear reminders\n"
         "/timesheet \\<description\\> — log a timesheet entry \\(no args to view, `clear` to reset\\)\n"
         "/expense \\<description\\> \\<amount\\> — log an expenditure \\(no args to view, `clear` to reset\\)\n"
-        "/analysis — expenditure totals and averages\n\n"
+        "/analysis \\[question\\] — expenditure stats \\+ AI insight \\(ask it something, e\\.g\\. `how can I save more?`\\)\n\n"
         "Or just type naturally — I'll figure it out\\!"
     )
     await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN_V2)
@@ -242,10 +243,16 @@ async def expense(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 @private_only
 async def analysis(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    """/analysis — totals and averages across all logged expenditure."""
-    entries = expenditure_svc.list_entries()
-    result  = expenditure_svc.analyze_entries(entries)
-    await update.message.reply_text(
-        format_expenditure_analysis(result),
-        parse_mode=ParseMode.MARKDOWN_V2,
-    )
+    """
+    /analysis            — expenditure stats + AI-generated insight
+    /analysis <question> — ask a specific question about your spending
+    """
+    question = " ".join(ctx.args) if ctx.args else None
+    await update.message.reply_text("Crunching your numbers…", parse_mode=ParseMode.MARKDOWN_V2)
+    try:
+        result, insight_text = insight_svc.analyze_with_insight(question=question)
+        msg = format_expenditure_insight(result, insight_text)
+    except Exception as e:
+        logger.error("analysis error: %s", e)
+        msg = f"❌ Error generating analysis: {escape(str(e))}"
+    await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)

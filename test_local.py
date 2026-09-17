@@ -2,7 +2,7 @@
 test_local.py
 Local integration test for all bot services (no Telegram needed).
 Run: python test_local.py [section]
-  section = gcal | trello | reminders | timesheet | nlp | formatter | all  (default: all)
+  section = gcal | trello | reminders | timesheet | expenditure | insight | nlp | formatter | all  (default: all)
 
 Each test prints PASS / FAIL and a summary at the end.
 Created events and cards are deleted after the test run.
@@ -536,6 +536,84 @@ def test_expenditure():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  4c. Insight (Groq categorization + expense analysis)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def test_insight():
+    import services.expenditure as exp_svc
+    import services.insight as insight_svc
+
+    section("Insight (Groq categorization + analysis)")
+
+    exp_svc.clear_entries()
+
+    exp_svc.add_entry(description="[TEST] Lunch at warung", amount=25000)
+    exp_svc.add_entry(description="[TEST] Grab ride to office", amount=18000)
+    exp_svc.add_entry(description="[TEST] Netflix subscription", amount=54000)
+
+    run(
+        "insight.categorize_missing (classifies 3 uncategorized entries)",
+        lambda: insight_svc.categorize_missing(exp_svc.list_entries()),
+    )
+
+    def _check_categories_assigned():
+        entries = exp_svc.list_entries()
+        missing = exp_svc.entries_missing_category(entries)
+        if missing:
+            raise AssertionError(f"Expected all entries categorized, {len(missing)} still missing")
+        cats = {e["category"] for e in entries}
+        if not cats.issubset(set(insight_svc.CATEGORIES)):
+            raise AssertionError(f"Unexpected category values: {cats}")
+        return {e["description"]: e["category"] for e in entries}
+
+    run("insight: all entries categorized with valid category", _check_categories_assigned)
+
+    def _check_by_category():
+        analysis = exp_svc.analyze_entries(exp_svc.list_entries())
+        if not analysis["by_category"]:
+            raise AssertionError("Expected non-empty by_category breakdown")
+        if sum(analysis["by_category"].values()) != analysis["total_amount"]:
+            raise AssertionError("by_category sums don't match total_amount")
+        return analysis["by_category"]
+
+    run("expenditure: analyze_entries() by_category sums to total", _check_by_category)
+
+    analysis = exp_svc.analyze_entries(exp_svc.list_entries())
+
+    def _check_insight_nonempty():
+        text = insight_svc.generate_insight(analysis)
+        if not text or len(text) < 10:
+            raise AssertionError(f"Expected a substantive insight, got: {text!r}")
+        return text[:100]
+
+    run("insight.generate_insight (generic summary)", _check_insight_nonempty)
+
+    run(
+        "insight.generate_insight (specific question)",
+        lambda: insight_svc.generate_insight(analysis, question="What category am I spending the most on?"),
+    )
+
+    run(
+        "insight.generate_insight (empty analysis doesn't crash)",
+        lambda: insight_svc.generate_insight(exp_svc.analyze_entries([])),
+    )
+
+    def _check_analyze_with_insight():
+        result, text = insight_svc.analyze_with_insight()
+        if result["entry_count"] != 3:
+            raise AssertionError(f"Expected entry_count=3, got {result['entry_count']}")
+        if not text:
+            raise AssertionError("Expected non-empty insight text")
+        return f"entry_count={result['entry_count']} insight={text[:60]}"
+
+    run("insight.analyze_with_insight (combined helper)", _check_analyze_with_insight)
+
+    # cleanup
+    exp_svc.clear_entries()
+    print(f"  {GREEN}(cleanup: cleared test expenditure entries){RESET}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  5. NLP / parse_intent
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -619,6 +697,16 @@ def test_nlp():
 
     run("NLP: add_expenditure populates amount + description", _check_expenditure_amount)
 
+    # Extra: verify analyze_expenditure captures the free-text question
+    def _check_expenditure_question():
+        result = parse_intent("Why did I spend so much on food this month?")
+        data = result.get("data", {})
+        if not data.get("question"):
+            raise AssertionError(f"Expected a question captured, got: {result}")
+        return f"question={data.get('question')}"
+
+    run("NLP: analyze_expenditure captures question", _check_expenditure_question)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  6. Formatter utilities
@@ -627,7 +715,7 @@ def test_nlp():
 def test_formatter():
     from utils.formatter import (
         format_events, format_cards, format_reminders, format_timesheet, format_daily, escape,
-        format_rupiah, format_expenditure, format_expenditure_analysis
+        format_rupiah, format_expenditure, format_expenditure_analysis, format_expenditure_insight
     )
     import services.expenditure as exp_svc
     from utils.dt import now
@@ -737,6 +825,26 @@ def test_formatter():
     run("format_expenditure_analysis (empty)",
         lambda: format_expenditure_analysis(exp_svc.analyze_entries([])))
 
+    # 5p. format_expenditure_insight with category breakdown + insight text
+    sample_with_category = [
+        {**e, "category": "food" if "warung" in e["description"].lower() or "coffee" in e["description"].lower()
+              else "shopping"}
+        for e in sample_expenditure
+    ]
+
+    def _check_expenditure_insight():
+        analysis = exp_svc.analyze_entries(sample_with_category)
+        out = format_expenditure_insight(analysis, "Test insight text about spending habits.")
+        if "Insight" not in out or "category" not in out.lower():
+            raise AssertionError(f"Expected Insight + category sections, got: {out}")
+        return out.split("\n")[0]
+
+    run("format_expenditure_insight (3 entries + insight text)", _check_expenditure_insight)
+
+    # 5q. format_expenditure_insight empty
+    run("format_expenditure_insight (empty)",
+        lambda: format_expenditure_insight(exp_svc.analyze_entries([]), ""))
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Main
@@ -748,6 +856,7 @@ SECTIONS = {
     "reminders":   test_reminders,
     "timesheet":   test_timesheet,
     "expenditure": test_expenditure,
+    "insight":     test_insight,
     "nlp":         test_nlp,
     "formatter":   test_formatter,
 }
