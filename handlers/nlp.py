@@ -83,7 +83,7 @@ async def _route_intent(update: Update, intent: str, data: dict, text: str):
             )
             return
         ev = gcal.create_event(
-            summary          = data.get("title", text),
+            summary          = data.get("title") or text,
             start_iso        = data["start_iso"],
             end_iso          = data.get("end_iso") or data["start_iso"],
             reminder_minutes = data.get("reminder_minutes"),
@@ -97,7 +97,7 @@ async def _route_intent(update: Update, intent: str, data: dict, text: str):
 
     elif intent == "add_task":
         card = trello.create_card(
-            name      = data.get("title", text),
+            name      = data.get("title") or text,
             priority  = data.get("priority"),
             due       = data.get("due_iso"),
             list_name = data.get("list_name"),
@@ -117,7 +117,7 @@ async def _route_intent(update: Update, intent: str, data: dict, text: str):
             )
             return
         rem = reminder_svc.add_reminder(
-            title         = data.get("title", text),
+            title         = data.get("title") or text,
             remind_at_iso = data["remind_at_iso"],
             recurrence    = data.get("recurrence"),
         )
@@ -139,7 +139,7 @@ async def _route_intent(update: Update, intent: str, data: dict, text: str):
 
     elif intent == "add_timesheet":
         entry = timesheet_svc.add_entry(
-            description = data.get("description", text),
+            description = data.get("description") or text,
             date_iso    = data.get("date_iso"),
         )
         await update.message.reply_text(
@@ -167,7 +167,7 @@ async def _route_intent(update: Update, intent: str, data: dict, text: str):
             )
             return
         entry = expenditure_svc.add_entry(
-            description = data.get("description", text),
+            description = data.get("description") or text,
             amount      = amount,
             date_iso    = data.get("date_iso"),
         )
