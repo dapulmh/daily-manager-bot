@@ -3,6 +3,8 @@ utils/formatter.py
 Builds nicely formatted Telegram messages (MarkdownV2-safe).
 """
 
+from __future__ import annotations
+
 from utils.dt import fmt_dt, fmt_date
 
 
@@ -167,6 +169,66 @@ def format_expenditure_insight(analysis: dict, insight_text: str) -> str:
         lines.append(f"\n{arrow} 7\\-day trend: {escape(f'{change:+.0f}%')} vs previous week")
 
     lines.append(f"\n💡 *Insight:*\n{escape(insight_text)}")
+
+    return "\n".join(lines)
+
+
+# ── Notes ────────────────────────────────────────────────────────────────────
+
+_NOTE_CATEGORY_EMOJI = {
+    "idea": "💡", "note": "🗒", "task": "✅", "question": "❓", "other": "📌",
+}
+
+
+def format_notes(entries: list[dict], category: str | None = None) -> str:
+    if category:
+        entries = [e for e in entries if e.get("category") == category]
+
+        if not entries:
+            return f"*Notes — {escape(category.title())}*\n\n_No notes in this category_ 🗒"
+
+        lines = [f"*Notes — {escape(category.title())}*\n"]
+        for e in entries:
+            lines.append(f"  • {escape(e['text'])}")
+        return "\n".join(lines)
+
+    if not entries:
+        return "*Notes*\n\n_No notes saved yet_ 🗒"
+
+    by_category: dict[str, list[dict]] = {}
+    for e in entries:
+        by_category.setdefault(e.get("category") or "other", []).append(e)
+
+    lines = ["*Notes*\n"]
+    for cat in sorted(by_category):
+        emoji = _NOTE_CATEGORY_EMOJI.get(cat, "📌")
+        lines.append(f"{emoji} *{escape(cat.title())}*")
+        for e in by_category[cat]:
+            lines.append(f"  • {escape(e['text'])}")
+
+    return "\n".join(lines)
+
+
+def format_notes_insight(aggregate: dict, insight_text: str) -> str:
+    """Stats block (total + category breakdown) plus an AI brainstorm trailer."""
+    if aggregate["total_count"] == 0:
+        return "*Notes Brainstorm*\n\n_No notes saved yet_ 🗒"
+
+    lines = ["*Notes Brainstorm*\n"]
+    if aggregate.get("topic"):
+        lines.append(f"🎯 Topic: {escape(aggregate['topic'])}")
+    lines.append(f"🗒 Total notes: {aggregate['total_count']}")
+
+    if aggregate.get("by_category"):
+        lines.append("\n📂 *By category:*")
+        for cat, count in sorted(aggregate["by_category"].items(), key=lambda kv: -kv[1]):
+            emoji = _NOTE_CATEGORY_EMOJI.get(cat, "📌")
+            lines.append(f"  • {emoji} {escape(cat.title())}: {count}")
+
+    if aggregate.get("matched") is not None:
+        lines.append(f"\n🔎 {len(aggregate['matched'])} note\\(s\\) matched the topic")
+
+    lines.append(f"\n💡 *Brainstorm:*\n{escape(insight_text)}")
 
     return "\n".join(lines)
 

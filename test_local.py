@@ -2,7 +2,7 @@
 test_local.py
 Local integration test for all bot services (no Telegram needed).
 Run: python test_local.py [section]
-  section = gcal | trello | reminders | timesheet | expenditure | insight | nlp | formatter | all  (default: all)
+  section = gcal | trello | reminders | timesheet | expenditure | insight | notes | nlp | formatter | all  (default: all)
 
 Each test prints PASS / FAIL and a summary at the end.
 Created events and cards are deleted after the test run.
@@ -614,6 +614,87 @@ def test_insight():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  4d. Notes (file-based + Groq classification + brainstorm)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def test_notes():
+    import services.notes as notes_svc
+    import services.notes_insight as notes_insight_svc
+
+    section("Notes (file-based + Groq classification)")
+
+    notes_svc.clear_entries()
+
+    run("notes_insight.add_note (idea)",
+        lambda: notes_insight_svc.add_note("[TEST] Build a habit tracker app with streaks"))
+    run("notes_insight.add_note (task)",
+        lambda: notes_insight_svc.add_note("[TEST] Renew the car insurance before Friday"))
+    run("notes_insight.add_note (question)",
+        lambda: notes_insight_svc.add_note("[TEST] What's the best way to learn Rust?"))
+
+    def _check_categories_valid():
+        entries = notes_svc.list_entries()
+        cats = {e["category"] for e in entries}
+        if not cats.issubset(set(notes_insight_svc.CATEGORIES)):
+            raise AssertionError(f"Unexpected category values: {cats}")
+        return {e["text"]: e["category"] for e in entries}
+
+    run("notes: all entries have a valid category", _check_categories_valid)
+
+    def _check_count():
+        entries = notes_svc.list_entries()
+        if len(entries) != 3:
+            raise AssertionError(f"Expected 3 notes, got {len(entries)}")
+        return "count correct"
+
+    run("notes: count == 3 after adding 3", _check_count)
+
+    run("notes_insight.classify_note (direct)",
+        lambda: notes_insight_svc.classify_note("[TEST] What if we built a plugin marketplace?"))
+    run("notes_insight.classify_note (empty text -> 'other')",
+        lambda: notes_insight_svc.classify_note(""))
+
+    def _check_classify_empty():
+        result = notes_insight_svc.classify_note("")
+        if result != "other":
+            raise AssertionError(f"Expected 'other' for empty text, got {result}")
+        return result
+
+    run("notes_insight.classify_note: empty text falls back to 'other'", _check_classify_empty)
+
+    def _check_aggregate():
+        entries = notes_svc.list_entries()
+        agg = notes_svc.aggregate_notes(entries)
+        if agg["total_count"] != 3:
+            raise AssertionError(f"Expected total_count=3, got {agg['total_count']}")
+        if sum(agg["by_category"].values()) != 3:
+            raise AssertionError("by_category counts don't sum to total_count")
+        return agg["by_category"]
+
+    run("notes.aggregate_notes (counts by category)", _check_aggregate)
+
+    def _check_brainstorm_generic():
+        result, text = notes_insight_svc.analyze_notes()
+        if result["total_count"] != 3:
+            raise AssertionError(f"Expected total_count=3, got {result['total_count']}")
+        if not text or len(text) < 10:
+            raise AssertionError(f"Expected substantive brainstorm text, got: {text!r}")
+        return text[:100]
+
+    run("notes_insight.analyze_notes (generic overview)", _check_brainstorm_generic)
+
+    run("notes_insight.analyze_notes (with topic)",
+        lambda: notes_insight_svc.analyze_notes(topic="habit tracker")[1][:100])
+
+    notes_svc.clear_entries()
+    run("notes_insight.analyze_notes (empty notes doesn't crash)",
+        lambda: notes_insight_svc.analyze_notes())
+
+    notes_svc.clear_entries()
+    print(f"  {GREEN}(cleanup: cleared test notes){RESET}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  5. NLP / parse_intent
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -639,6 +720,8 @@ def test_nlp():
         ("list_expenditure",  "Show me my expenses",                          "list_expenditure"),
         ("clear_expenditure", "Clear my expenditure log",                     "clear_expenditure"),
         ("analyze_expenditure", "How much have I spent this month?",          "analyze_expenditure"),
+        ("list_notes",      "Show me my ideas",                               "list_notes"),
+        ("brainstorm_notes", "Brainstorm on my product ideas",                "brainstorm_notes"),
         ("unknown",         "What's the weather in Jakarta?",                  "unknown"),
     ]
 
@@ -707,6 +790,30 @@ def test_nlp():
 
     run("NLP: analyze_expenditure captures question", _check_expenditure_question)
 
+    # Extra: verify list_notes captures an explicit category when mentioned
+    def _check_list_notes_category():
+        result = parse_intent("Show me my saved tasks")
+        data = result.get("data", {})
+        if data.get("category") not in ("task", None):  # LLM may or may not catch it
+            raise AssertionError(f"Unexpected category: {data.get('category')}")
+        return f"category={data.get('category')}"
+
+    run("NLP: list_notes captures category", _check_list_notes_category)
+
+    # Extra: verify brainstorm_notes captures the free-text topic when present
+    # (the model doesn't always extract a sub-topic from phrasing like
+    # "brainstorm on my X idea" - null is an acceptable fallback, same
+    # leniency as add_task's #high priority check above)
+    def _check_brainstorm_topic():
+        result = parse_intent("Brainstorm specifically about my habit tracker idea")
+        data = result.get("data", {})
+        topic = data.get("topic")
+        if topic is not None and "habit" not in topic.lower():
+            raise AssertionError(f"Unexpected topic: {topic}")
+        return f"topic={topic}"
+
+    run("NLP: brainstorm_notes captures topic", _check_brainstorm_topic)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  6. Formatter utilities
@@ -715,7 +822,8 @@ def test_nlp():
 def test_formatter():
     from utils.formatter import (
         format_events, format_cards, format_reminders, format_timesheet, format_daily, escape,
-        format_rupiah, format_expenditure, format_expenditure_analysis, format_expenditure_insight
+        format_rupiah, format_expenditure, format_expenditure_analysis, format_expenditure_insight,
+        format_notes, format_notes_insight
     )
     import services.expenditure as exp_svc
     from utils.dt import now
@@ -845,6 +953,50 @@ def test_formatter():
     run("format_expenditure_insight (empty)",
         lambda: format_expenditure_insight(exp_svc.analyze_entries([]), ""))
 
+    sample_notes = [
+        {"id": "n1", "text": "Build a habit tracker app", "category": "idea",     "created_at_iso": dt_str},
+        {"id": "n2", "text": "Renew car insurance",         "category": "task",     "created_at_iso": dt_str},
+        {"id": "n3", "text": "What's the capital of Peru?", "category": "question", "created_at_iso": dt_str},
+    ]
+
+    # 5r. format_notes with data, grouped by category
+    def _check_notes_grouping():
+        out = format_notes(sample_notes)
+        if out.count("•") != 3:
+            raise AssertionError(f"Expected 3 note bullets, got: {out}")
+        return out.split("\n")[0]
+
+    run("format_notes (3 entries, 3 categories)", _check_notes_grouping)
+
+    # 5s. format_notes empty
+    run("format_notes (empty)",
+        lambda: format_notes([]))
+
+    # 5t. format_notes filtered by category
+    def _check_notes_category_filter():
+        out = format_notes(sample_notes, category="task")
+        if "Renew car insurance" not in out or "habit tracker" in out:
+            raise AssertionError(f"Expected only the task note, got: {out}")
+        return out.split("\n")[0]
+
+    run("format_notes (filtered by category)", _check_notes_category_filter)
+
+    import services.notes as notes_svc
+
+    # 5u. format_notes_insight with category breakdown + brainstorm text
+    def _check_notes_insight():
+        aggregate = notes_svc.aggregate_notes(sample_notes)
+        out = format_notes_insight(aggregate, "Test brainstorm text about saved notes.")
+        if "Brainstorm" not in out or "category" not in out.lower():
+            raise AssertionError(f"Expected Brainstorm + category sections, got: {out}")
+        return out.split("\n")[0]
+
+    run("format_notes_insight (3 entries + brainstorm text)", _check_notes_insight)
+
+    # 5v. format_notes_insight empty
+    run("format_notes_insight (empty)",
+        lambda: format_notes_insight(notes_svc.aggregate_notes([]), ""))
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Main
@@ -857,6 +1009,7 @@ SECTIONS = {
     "timesheet":   test_timesheet,
     "expenditure": test_expenditure,
     "insight":     test_insight,
+    "notes":       test_notes,
     "nlp":         test_nlp,
     "formatter":   test_formatter,
 }

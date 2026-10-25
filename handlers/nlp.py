@@ -16,9 +16,12 @@ import services.reminders as reminder_svc
 import services.timesheet as timesheet_svc
 import services.expenditure as expenditure_svc
 import services.insight as insight_svc
+import services.notes as notes_svc
+import services.notes_insight as notes_insight_svc
 from utils.formatter import (
     format_daily, format_events, format_cards, format_reminders, format_timesheet,
-    format_expenditure, format_expenditure_insight, format_rupiah, escape
+    format_expenditure, format_expenditure_insight, format_rupiah, escape,
+    format_notes, format_notes_insight
 )
 
 logger = logging.getLogger(__name__)
@@ -191,6 +194,18 @@ async def _route_intent(update: Update, intent: str, data: dict, text: str):
         result, insight_text = insight_svc.analyze_with_insight(question=data.get("question"))
         await update.message.reply_text(
             format_expenditure_insight(result, insight_text), parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    elif intent == "list_notes":
+        entries = notes_svc.list_entries()
+        await update.message.reply_text(
+            format_notes(entries, category=data.get("category")), parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    elif intent == "brainstorm_notes":
+        result, insight_text = notes_insight_svc.analyze_notes(topic=data.get("topic"))
+        await update.message.reply_text(
+            format_notes_insight(result, insight_text), parse_mode=ParseMode.MARKDOWN_V2
         )
 
     else:

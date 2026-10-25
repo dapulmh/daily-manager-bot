@@ -33,6 +33,8 @@ Possible intents:
   list_expenditure   — wants to see logged expenditure entries
   clear_expenditure  — wants to clear/reset the expenditure log
   analyze_expenditure — wants totals/averages/analysis of their spending
+  list_notes       — wants to see saved notes/ideas, optionally filtered to one category
+  brainstorm_notes — wants AI brainstorming/analysis over saved notes, optionally on a topic
   unknown         — none of the above
 
 JSON schema:
@@ -67,7 +69,13 @@ JSON schema:
     "date_iso": "<ISO 8601 date (YYYY-MM-DD), default today if not specified>",
 
     // for analyze_expenditure:
-    "question": "<the specific question being asked about spending, e.g. 'why did I overspend on food this month', or null if it's just a generic request for a summary>"
+    "question": "<the specific question being asked about spending, e.g. 'why did I overspend on food this month', or null if it's just a generic request for a summary>",
+
+    // for list_notes:
+    "category": "<idea|note|task|question|other, or null to show all>",
+
+    // for brainstorm_notes:
+    "topic": "<the specific topic/question to brainstorm about, or null for a general overview>"
   }}
 }}
 If a field is not mentioned, set it to null. Always output valid JSON.

@@ -11,7 +11,8 @@ from telegram.constants import ParseMode
 from utils.auth import private_only
 from utils.formatter import (
     format_daily, format_events, format_cards, format_reminders, format_timesheet,
-    format_expenditure, format_expenditure_insight, format_rupiah, escape
+    format_expenditure, format_expenditure_insight, format_rupiah, escape,
+    format_notes, format_notes_insight
 )
 import services.google_calendar as gcal
 import services.trello as trello
@@ -19,6 +20,8 @@ import services.reminders as reminder_svc
 import services.timesheet as timesheet_svc
 import services.expenditure as expenditure_svc
 import services.insight as insight_svc
+import services.notes as notes_svc
+import services.notes_insight as notes_insight_svc
 from services.nlp import parse_intent
 
 logger = logging.getLogger(__name__)
@@ -36,7 +39,9 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "/remind — list or clear reminders\n"
         "/timesheet \\<description\\> — log a timesheet entry \\(no args to view, `clear` to reset\\)\n"
         "/expense \\<description\\> \\<amount\\> — log an expenditure \\(no args to view, `clear` to reset\\)\n"
-        "/analysis \\[question\\] — expenditure stats \\+ AI insight \\(ask it something, e\\.g\\. `how can I save more?`\\)\n\n"
+        "/analysis \\[question\\] — expenditure stats \\+ AI insight \\(ask it something, e\\.g\\. `how can I save more?`\\)\n"
+        "/note \\[text\\] — save a note/idea \\(auto\\-classified; no args to view, `clear` to reset\\)\n"
+        "/brainstorm \\[topic\\] — AI brainstorming over your saved notes\n\n"
         "Or just type naturally — I'll figure it out\\!"
     )
     await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN_V2)
@@ -255,4 +260,52 @@ async def analysis(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error("analysis error: %s", e)
         msg = f"❌ Error generating analysis: {escape(str(e))}"
+    await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+
+
+@private_only
+async def note(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """
+    /note              — show saved notes, grouped by category
+    /note clear        — clear all notes
+    /note <text>       — save a note; classified into a category immediately
+    """
+    raw = " ".join(ctx.args)
+    arg = raw.lower()
+
+    if arg == "clear":
+        n = notes_svc.clear_entries()
+        await update.message.reply_text(f"🗑 Cleared {n} note{'s' if n != 1 else ''}\\.")
+        return
+
+    if not raw:
+        entries = notes_svc.list_entries()
+        await update.message.reply_text(
+            format_notes(entries),
+            parse_mode=ParseMode.MARKDOWN_V2,
+        )
+        return
+
+    await update.message.reply_text("Classifying…", parse_mode=ParseMode.MARKDOWN_V2)
+    entry = notes_insight_svc.add_note(raw)
+    await update.message.reply_text(
+        f"🗒 Saved as *{escape(entry['category'])}*: {escape(entry['text'])}",
+        parse_mode=ParseMode.MARKDOWN_V2,
+    )
+
+
+@private_only
+async def brainstorm(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """
+    /brainstorm          — general AI brainstorming overview of saved notes
+    /brainstorm <topic>  — brainstorm specifically about a topic/question
+    """
+    topic = " ".join(ctx.args) if ctx.args else None
+    await update.message.reply_text("Thinking it through…", parse_mode=ParseMode.MARKDOWN_V2)
+    try:
+        result, insight_text = notes_insight_svc.analyze_notes(topic=topic)
+        msg = format_notes_insight(result, insight_text)
+    except Exception as e:
+        logger.error("brainstorm error: %s", e)
+        msg = f"❌ Error generating brainstorm: {escape(str(e))}"
     await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
